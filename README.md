@@ -11,7 +11,6 @@ All files beginning with 'M' are for the Men's tournament and all files beginnin
 
 ## Next Steps
 
-- Finish DataCleaning, add Opp FT% to stats, make a Teamrank and Trank Game Score (likely should average them out)
 - Write Prediction Script
 - Write Script to make alterations to Kaggle submission
 - Write script to output round probabilities for each team
