@@ -11,9 +11,9 @@ All files beginning with 'M' are for the Men's tournament and all files beginnin
 
 ## Next Steps
 
+- Write script to output round probabilities for each team for mens
+- Write Women's alterations
+- Write script to output round probabilities for each team for womens
 - Write Prediction Script
-- Write Script to make alterations to Kaggle submission
-- Write script to output round probabilities for each team
-- Add vegas lines to kaggle alterations for opening round
-- Write function to alter probabilities for a given team (UConn)
 - Play around with Massey ordinals: Remove trank and teamrank, remove ones that didn't exist in 2008-2019, 2021, remove ones that don't rank all teams, remove ones with high correlations (include Trank, Teamrank, and seeds with correlations)
+- Write women's prediction script
