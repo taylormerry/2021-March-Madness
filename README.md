@@ -11,6 +11,9 @@ All files beginning with 'M' are for the Men's tournament and all files beginnin
 
 ## Next Steps
 
+- Write script to output round probabilities for each team for mens
+- Write Women's alterations
+- Write script to output round probabilities for each team for womens
 - Write Prediction Script
-- Write script to output round probabilities for each team
 - Play around with Massey ordinals: Remove trank and teamrank, remove ones that didn't exist in 2008-2019, 2021, remove ones that don't rank all teams, remove ones with high correlations (include Trank, Teamrank, and seeds with correlations)
+- Write women's prediction script
