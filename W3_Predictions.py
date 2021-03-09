@@ -1,0 +1,1 @@
+# prob (and likely spread) model does not need stats, can just get moore ratings and seeds
