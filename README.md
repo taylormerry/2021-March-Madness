@@ -11,7 +11,6 @@ All files beginning with 'M' are for the Men's tournament and all files beginnin
 
 ## Next Steps
 
-- Finish womens spread model
 - Write women's prediction script (to predict both spread and probabilities)
 - Mens Prediction Script to dos
 - Add mens money lines and spreads
