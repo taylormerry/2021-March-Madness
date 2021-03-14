@@ -5,6 +5,10 @@ from bs4 import BeautifulSoup
 import requests
 from scipy.stats import zscore, norm
 import pickle
+from sklearn.ensemble import RandomForestRegressor
+from xgboost import XGBRegressor
+from sklearn.linear_model import LogisticRegression
+
 
 # File from Kaggle, all possible team spellings (to get to the TeamID)
 spellings = pd.read_csv('ncaam-march-mania-2021/MTeamSpellings.csv', encoding = 'ISO-8859-1')
@@ -412,6 +416,7 @@ stats_merge = pd.merge(stats, stats2, on = ['TeamID'])
 teams = pd.merge(teams, stats_merge, on = ['TeamID'])
 
 # Submission file for 2021
+# TODO: Update file name
 data21 = pd.read_csv('DataFiles/SampleSubmissionStage2.csv')
 
 # Weighted ratings for 2021
@@ -529,13 +534,13 @@ prob_submission['Pred'] = prob_df['Pred']
 
 # Make predictions for spreads
 rf_df = pd.DataFrame(spread_rf_model.predict(matchups))
-rf_df.columns = ['RFPred']
+rf_df.columns = ['Pred']
 xgb_df = pd.DataFrame(spread_xgb_model.predict(matchups))
-xgb_df.columns = ['XGBPred']
+xgb_df.columns = ['Pred']
 
 # Make submission df for probabilities
 spread_submission = game_data[['ID', 'Pred', 'TeamID_x', 'TeamID_y']]
-spread_submission['Pred'] = matchups['TrankPredictedPoss'] * (0.5 * rf_df['RFPred'] + 0.5 * xgb_df['XGBPred']) # avg the random forest and xgboost predictions
+spread_submission['Pred'] = matchups['TrankPredictedPoss'] * (0.65 * rf_df['Pred'] + 0.35 * xgb_df['Pred'])# multiply expected spread per poss by expected poss
 
 # Write predictions to csv
 prob_submission.to_csv('mydata/mens/original_probabilities.csv', index = False)
