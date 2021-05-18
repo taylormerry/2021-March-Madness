@@ -5,6 +5,7 @@ import pickle
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
 from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
 
 
 # team spellings df from kaggle
@@ -79,6 +80,10 @@ def fix_name(row):
         return 'stephen f austin'
     elif row['Team'] == 'southern cal':
         return 'usc'
+    elif row['Team'] == 'tarleton':
+        return 'tarleton st'
+    elif row['Team'] == 'california san diego':
+        return 'uc san diego'
     else:
         return row['Team']
     
@@ -94,11 +99,10 @@ moore_teams = moore_teams.drop(columns = ['Team', 'TeamNameSpelling']).drop_dupl
 moore_teams['MooreRating'] = moore_teams['MooreRating'].astype(float)
 
 # Read in 2021's tournament seeds
-# TODO: Update file name
 seeds = pd.read_csv('ncaaw-march-mania-2021/WNCAATourneySeeds.csv').query('Season == 2021')
 
 # merge seeds and moore ratings
-teams = pd.merge(moore_teams, seeds, on = ['Season', 'TeamID'], how = 'inner').drop_duplicates()
+teams = pd.merge(moore_teams, seeds, on = ['TeamID'], how = 'inner').drop_duplicates()
 
 # return just the seed number, no need for region for this use case
 def clean_seeds(row):
@@ -107,9 +111,8 @@ def clean_seeds(row):
 # get seed number for each team
 teams['Seed'] = teams.apply(clean_seeds, axis = 1)
 
-# TODO: Update file name
 # Submission file for 2021
-data21 = pd.read_csv('DataFiles/SampleSubmissionStage2.csv')
+data21 = pd.read_csv('ncaaw-march-mania-2021/WSampleSubmissionStage2.csv')
 
 # Weighted ratings for 2021
 ratings = teams[['TeamID', 'MooreRating']]
@@ -150,7 +153,7 @@ game_data = pd.merge(game_data, teams, left_on = ['TeamID_y'], right_on = ['Team
 game_data = game_data.loc[:,~game_data.columns.duplicated()]  # Removes duplicate columns
 
 # Start with the stats for each team
-matchups = game_data.drop(columns = ['TeamID_x', 'TeamID_y'])
+matchups = game_data.drop(columns = ['TeamID_x', 'TeamID_y', 'Season_x', 'Season_y', 'ID', 'Pred'])
 
 # Predictors
 
@@ -165,13 +168,25 @@ prob_model = pickle.load(open('models/WProb.sav', 'rb'))
 spread_rf_model = pickle.load(open('models/WSpreadRF.sav', 'rb'))
 spread_xgb_model = pickle.load(open('models/WSpreadXGB.sav', 'rb'))
 
+features_to_use = ['MooreRating_x', 'SeedDiff', 'MoorePredictedSpread']
+
+# read in training data to scale X columns
+scale = StandardScaler()
+X_train = pd.read_csv('mydata/womens/matchups_no_stats.csv')[features_to_use]
+scale.fit(X_train)
+X_prob = pd.DataFrame(scale.transform(matchups[features_to_use]), columns = features_to_use)
+
 # Make predictions for probabilities
-prob_df = pd.DataFrame(prob_model.predict_proba(matchups))
+prob_df = pd.DataFrame(prob_model.predict_proba(X_prob))
 prob_df.columns = ['Pred', 'Ignore']
 
 # Make submission df for probabilities
 prob_submission = game_data[['ID', 'Pred', 'TeamID_x', 'TeamID_y']]
 prob_submission['Pred'] = prob_df['Pred']
+prob_submission['SeedDiff'] = matchups['SeedDiff']
+prob_submission['Seed_x'] = matchups['Seed_x']
+prob_submission['Seed_y'] = matchups['Seed_y']
+
 
 # Make predictions for spreads
 rf_df = pd.DataFrame(spread_rf_model.predict(matchups))
@@ -181,7 +196,7 @@ xgb_df.columns = ['XGBPred']
 
 # Make submission df for probabilities
 spread_submission = game_data[['ID', 'Pred', 'TeamID_x', 'TeamID_y']]
-spread_submission['Pred'] = matchups['TrankPredictedPoss'] * (0.5 * rf_df['RFPred'] + 0.5 * xgb_df['XGBPred']) # avg the random forest and xgboost predictions
+spread_submission['Pred'] = (0.5 * rf_df['RFPred'] + 0.5 * xgb_df['XGBPred']) # avg the random forest and xgboost predictions
 
 # Write predictions to csv
 prob_submission.to_csv('mydata/womens/original_probabilities.csv', index = False)

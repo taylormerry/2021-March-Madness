@@ -7,6 +7,7 @@ from scipy.stats import zscore, norm
 import pickle
 from sklearn.ensemble import RandomForestRegressor
 from xgboost import XGBRegressor
+from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 
 
@@ -249,7 +250,7 @@ trank_url = 'http://barttorvik.com/2021_team_results.csv'
 trank = pd.read_csv(trank_url)
 
 trank = trank[['rank', 'record', 'oe Rank', 'de Rank', 'Fun Rk, adjt']]
-trank = trank.rename(columns = {'rank': 'Team', 'record': 'TrankRating', 'oe Rank': 'OE', 'de Rank': 'DE', 'Fun Rk, adjt': 'Tempo'})
+trank = trank.rename(columns = {'rank': 'Team', 'record': 'OE', 'oe Rank': 'DE', 'de Rank': 'TrankRating', 'Fun Rk, adjt': 'Tempo'})
 
 # Calculate season average tempo
 avg_tempo = trank['Tempo'].mean()
@@ -283,11 +284,11 @@ teams['TrankZScore'] = zscore(teams['TrankRating'])
 teams['WeightedRating'] = 0.55 * teams['TrankZScore'] + 0.45 * teams['TeamrankZScore']
 teams = teams.drop(columns = ['TrankZScore', 'TeamrankZScore'])
 
-# TODO: Read in 2021 seeds
-seeds = pd.read_csv('ncaam-march-mania-2021/MNCAATourneySeeds.csv')
+# Read in 2021 seeds
+seeds = pd.read_csv('ncaam-march-mania-2021/MNCAATourneySeeds.csv').query('Season == 2021').drop(columns = ['Season'])
 
 # merge seeds with team data
-teams = pd.merge(teams, seeds, on = ['Season', 'TeamID'], how = 'inner')
+teams = pd.merge(teams, seeds, on = ['TeamID'], how = 'inner')
 
 # extract just the seed number, no need for region here
 def clean_seeds(row):
@@ -295,8 +296,8 @@ def clean_seeds(row):
 
 teams['Seed'] = teams.apply(clean_seeds, axis = 1)
 
-# TODO: Read in regular season stats, might have to query for 2021 only and drop the season column
-reg_season = pd.read_csv('ncaam-march-mania-2021/MRegularSeasonDetailedResults.csv')
+# Read in regular season stats, might have to query for 2021 only and drop the season column
+reg_season = pd.read_csv('ncaam-march-mania-2021/MRegularSeasonDetailedResults.csv').query('Season == 2021').drop(columns = ['Season'])
 
 # Score differential per posseassion
 reg_season['ScoreDiffPerPoss'] = 2 * (reg_season['WScore'] - reg_season['LScore']) / (reg_season['WFGA'] + reg_season['WTO'] + 0.44 * reg_season['WFTA'] - reg_season['WOR'] + reg_season['LFGA'] + reg_season['LTO'] + 0.44 * reg_season['LFTA'] - reg_season['LOR'])
@@ -340,7 +341,6 @@ wl_data = wl_data.fillna(0)
 
 # Caculate season stats
 stats = pd.DataFrame()
-stats['Season'] = wl_data['Season']
 stats['TeamID'] = wl_data['WTeamID']
 stats['3ptRate'] = (wl_data['WFGA3_x'] + wl_data['LFGA3_y']) / (wl_data['WFGA_x'] + wl_data['LFGA_y'])
 stats['Ast%'] = (wl_data['WAst_x'] + wl_data['LAst_y']) / (wl_data['WFGM_x'] + wl_data['LFGM_y'])
@@ -365,11 +365,10 @@ stats['3P%D'] = (wl_data['WFGM3_y'] + wl_data['LFGM3_x']) / (wl_data['WFGA3_y'] 
 stats2 = pd.DataFrame()
 for team in teams['TeamID'].unique():
     if len(teams[(teams['TeamID'] == team) & (teams['Seed'] > 0)]) > 0:
-        season_data = my_data[my_data['Season'] == season]
-        w_data = season_data[season_data['WTeamID'] == team]
-        w_data.columns = ['Season', 'TeamID', 'OppTeamID', 'FGM', 'OppFGM', 'FGA', 'OppFGA', 'FGM3', 'OppFGM3', 'FGA3', 'OppFGA3', 'FTM', 'OppFTM', 'FTA', 'OppFTA', 'Ast', 'OppAst', 'TO', 'OppTO', 'OR', 'OppOR', 'DR', 'OppDR', 'AdjScoreDiffPerPoss', 'OE', 'DE', 'OppOE', 'OppDE', 'PredictedAdjScoreDiffPerPoss']
-        l_data = season_data[season_data['LTeamID'] == team]
-        l_data = l_data[['Season', 'LTeamID', 'WTeamID', 'LFGM', 'WFGM', 'LFGA', 'WFGA', 'LFGM3', 'WFGM3', 'LFGA3', 'WFGA3', 'LFTM', 'WFTM', 'LFTA', 'WFTA', 'LAst', 'WAst', 'LTO', 'WTO', 'LOR', 'WOR', 'LDR', 'WDR', 'AdjScoreDiffPerPoss', 'LOE', 'LDE', 'WOE', 'WDE', 'PredictedAdjScoreDiffPerPoss']]
+        w_data = my_data[my_data['WTeamID'] == team]
+        w_data.columns = ['TeamID', 'OppTeamID', 'FGM', 'OppFGM', 'FGA', 'OppFGA', 'FGM3', 'OppFGM3', 'FGA3', 'OppFGA3', 'FTM', 'OppFTM', 'FTA', 'OppFTA', 'Ast', 'OppAst', 'TO', 'OppTO', 'OR', 'OppOR', 'DR', 'OppDR', 'AdjScoreDiffPerPoss', 'OE', 'DE', 'OppOE', 'OppDE', 'PredictedAdjScoreDiffPerPoss']
+        l_data = my_data[my_data['LTeamID'] == team]
+        l_data = l_data[['LTeamID', 'WTeamID', 'LFGM', 'WFGM', 'LFGA', 'WFGA', 'LFGM3', 'WFGM3', 'LFGA3', 'WFGA3', 'LFTM', 'WFTM', 'LFTA', 'WFTA', 'LAst', 'WAst', 'LTO', 'WTO', 'LOR', 'WOR', 'LDR', 'WDR', 'AdjScoreDiffPerPoss', 'LOE', 'LDE', 'WOE', 'WDE', 'PredictedAdjScoreDiffPerPoss']]
         l_data['AdjScoreDiffPerPoss'] = -1 * l_data['AdjScoreDiffPerPoss']
         l_data['PredictedAdjScoreDiffPerPoss'] = -1 * l_data['PredictedAdjScoreDiffPerPoss']
         l_data.columns = w_data.columns
@@ -391,8 +390,7 @@ for team in teams['TeamID'].unique():
         team_data['OppTO%'] = team_data['OppTO'] / (team_data['OppTO'] + team_data['OppFGA'] - team_data['OppOR'] + .44 * team_data['OppFTA'])
         team_data['TotalPoss'] = team_data['TO'] + team_data['OppTO'] + team_data['FGA'] + team_data['OppFGA'] - team_data['OR'] - team_data['OR'] + .44 * (team_data['FTA'] + team_data['OppFTA'])
         team_data['GameScore'] = team_data['AdjScoreDiffPerPoss'] - team_data['PredictedAdjScoreDiffPerPoss']
-        stats2 = pd.concat([stats2, pd.DataFrame({'Season': [season],
-                                                 'TeamID': [team],
+        stats2 = pd.concat([stats2, pd.DataFrame({'TeamID': [team],
                                                  '3ptRateVar': [np.var(team_data['3ptRate'])],
                                                  'Opp3ptRateVar': [np.var(team_data['Opp3ptRate'])],
                                                  'eFG%Var': [np.var(team_data['eFG%'])],
@@ -416,8 +414,7 @@ stats_merge = pd.merge(stats, stats2, on = ['TeamID'])
 teams = pd.merge(teams, stats_merge, on = ['TeamID'])
 
 # Submission file for 2021
-# TODO: Update file name
-data21 = pd.read_csv('DataFiles/SampleSubmissionStage2.csv')
+data21 = pd.read_csv('ncaam-march-mania-2021/MSampleSubmissionStage2.csv')
 
 # Weighted ratings for 2021
 ratings = teams[['TeamID', 'WeightedRating']]
@@ -483,6 +480,7 @@ matchups['AbsTrankTempoDiff'] = abs(matchups['TrankTempoDiff'])
 # Offensive vs defensive EFG% averages and differences
 matchups['xOffyDefEFGAvg'] = (game_data['EFG%_x'] + game_data['EFGD%_y']) / 2
 matchups['yOffxDefEFGAvg'] = (game_data['EFG%_y'] + game_data['EFGD%_x']) / 2
+matchups['xOffyOffEFGDiff'] = matchups['xOffyDefEFGAvg'] - matchups['yOffxDefEFGAvg']
 
 # Offensive vs defensive turnover rate averages and differences
 matchups['xOffyDefTOAvg'] = (game_data['TOR%_x'] + game_data['TORD%_y']) / 2
@@ -521,18 +519,31 @@ spread_rf_model = pickle.load(open('models/MSpreadRF.sav', 'rb'))
 spread_xgb_model = pickle.load(open('models/MSpreadXGB.sav', 'rb'))
 
 # features to use for probabilities model
-features_to_use = ['TrankRating_x', 'ORB%_x', 'FTRVar_x', 'OR%Var_y', 'SeedDiff', 'TrankPredictedSpread', 'xOffyOffTODiff', 'xOffyDefAstAvg', 'TrankNaiveUpsetProbability', 'TeamrankNaiveUpsetProbability']
+features_to_use = ['TeamrankRating_x', 'TrankRating_x', 'ORB%_x', 'FTRVar_x', 'DE_y',
+       '3P%D_y', '3pt%Var_y', 'FTRVar_y', 'OR%Var_y', 'TotalPossVar_y',
+       'TrankPredictedSpread', 'xOffyOffTODiff', 'xOffyDefAstAvg',
+       'TrankNaiveUpsetProbability', 'TeamrankNaiveUpsetProbability',
+       'SeedDiff']
+
+# read in training data to scale X columns
+scale = StandardScaler()
+X_train = pd.read_csv('mydata/mens/matchups.csv')[features_to_use]
+scale.fit(X_train)
+X_prob = pd.DataFrame(scale.transform(matchups[features_to_use]), columns = features_to_use)
 
 # Make predictions for probabilities
-prob_df = pd.DataFrame(prob_model.predict_proba(matchups[features_to_use]))
+prob_df = pd.DataFrame(prob_model.predict_proba(X_prob))
 prob_df.columns = ['Pred', 'Ignore']
 
 # Make submission df for probabilities
 prob_submission = game_data[['ID', 'Pred', 'TeamID_x', 'TeamID_y']]
 prob_submission['Pred'] = prob_df['Pred']
+prob_submission['SeedDiff'] = matchups['SeedDiff']
+prob_submission['Seed_y'] = matchups['Seed_y']
 
 
 # Make predictions for spreads
+matchups = matchups.drop(columns = ['xOffyOffEFGDiff'])
 rf_df = pd.DataFrame(spread_rf_model.predict(matchups))
 rf_df.columns = ['Pred']
 xgb_df = pd.DataFrame(spread_xgb_model.predict(matchups))
