@@ -2,7 +2,7 @@
 
 ## Description
 
-This repo is the code I used for my Men's and Women's March Madness Kaggle Competition submissions.
+This repo is the code I used for my Men's and Women's March Madness Kaggle Competition submissions in 2021.
 
 ## Files
 
